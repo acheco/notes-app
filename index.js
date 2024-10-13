@@ -1,7 +1,8 @@
 const express = require("express");
 const app = express();
-const { v4: uuidv4 } = require("uuid");
 const cors = require("cors");
+require("dotenv").config();
+const Note = require("./models/note");
 
 // Middlewares generales
 app.use(express.urlencoded({ extended: true }));
@@ -23,67 +24,52 @@ const requestLogger = (req, res, next) => {
 
 app.use(requestLogger);
 
-let notes = [
-  { id: 1, content: "HTML is easy", important: true },
-  {
-    id: 2,
-    content: "Browser can execute only JavaScript",
-    important: false,
-  },
-  {
-    id: 3,
-    content: "GET and POST are the most important methods of HTTP protocol",
-    important: true,
-  },
-];
-
 //  GET all notes
 app.get("/api/notes", (req, res) => {
-  res.json(notes);
+  Note.find({}).then((result) => {
+    res.json(result);
+  });
 });
 
 // GET a single note
 app.get("/api/notes/:id", (req, res) => {
-  // Capturamos el parámetro id de la variable req y lo almacenamos en la variable id
-  const id = Number(req.params.id);
-
-  // Revisamos si existe una nota con el ID indicado
-  const note = notes.find((note) => note.id === id);
-  // Si la nota existe la retornamos, en caso contrario, retornamos el status 404 "Not Found" con un mensaje personalizado
-  if (note) {
-    res.json(note);
-  } else {
-    res.status(404).end(`No such note with id ${id} not found`);
-  }
+  Note.findById(req.params.id).then((result) => {
+    if (result) {
+      res.json(result);
+    } else {
+      res.status(404).send("Not Found");
+    }
+  });
 });
 
 // POST a new note
 app.post("/api/notes", (req, res) => {
   const body = req.body;
 
-  if (!body.content) {
+  // Validamos que el body no esté vacío
+  if (body.content === "" || body.content === undefined) {
     res.status(400).json({
       error: "Content missing",
     });
   }
 
-  const note = {
-    id: uuidv4(),
+  // Creamos un objeto tipo Note (modelo de Mongoose) y creamos la nota
+  const note = new Note({
     content: body.content,
     important: body.important || false,
-  };
+  });
 
-  notes = notes.concat(note);
-
-  res.json(notes);
+  // Guardamos la nota y retornamos el resultado en formato JSON
+  note.save().then((result) => {
+    res.json(result);
+  });
 });
 
 // DELETE a note
 app.delete("/api/notes/:id", (req, res) => {
-  const id = Number(req.params.id);
-  notes = notes.filter((note) => note.id !== id);
-
-  res.status(204).end();
+  Note.findByIdAndDelete(req.params.id).then((result) => {
+    res.status(204).end();
+  });
 });
 
 // Middleware para saber cuando un endpoint no existe
@@ -93,7 +79,7 @@ const unknownEndpoint = (req, res) => {
 
 app.use(unknownEndpoint);
 
-const PORT = 3001;
+const PORT = process.env.PORT;
 app.listen(PORT, () => {
   console.log(`Server started on port ${PORT}`);
 });
