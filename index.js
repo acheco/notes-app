@@ -4,11 +4,11 @@ const cors = require("cors");
 require("dotenv").config();
 const Note = require("./models/note");
 
+// Middleware que sirve el directorio principal del frontend del proyecto.
+app.use(express.static("dist"));
 // Middlewares generales
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
-// Middleware que sirve el directorio principal del frontend del proyecto.
-app.use(express.static("dist"));
 
 // Middleware para poder servir datos a un frontend fuera del servidor
 app.use(cors());
@@ -32,14 +32,16 @@ app.get("/api/notes", (req, res) => {
 });
 
 // GET a single note
-app.get("/api/notes/:id", (req, res) => {
-  Note.findById(req.params.id).then((result) => {
-    if (result) {
-      res.json(result);
-    } else {
-      res.status(404).send("Not Found");
-    }
-  });
+app.get("/api/notes/:id", (req, res, next) => {
+  Note.findById(req.params.id)
+    .then((result) => {
+      if (result) {
+        res.json(result);
+      } else {
+        res.status(404).end();
+      }
+    })
+    .catch((error) => next(error));
 });
 
 // POST a new note
@@ -66,10 +68,27 @@ app.post("/api/notes", (req, res) => {
 });
 
 // DELETE a note
-app.delete("/api/notes/:id", (req, res) => {
-  Note.findByIdAndDelete(req.params.id).then((result) => {
-    res.status(204).end();
-  });
+app.delete("/api/notes/:id", (req, res, next) => {
+  Note.findByIdAndDelete(req.params.id)
+    .then((result) => {
+      res.status(204).end();
+    })
+    .catch((error) => next(error));
+});
+
+app.put("/api/notes/:id", (req, res, next) => {
+  const body = req.body;
+
+  const note = {
+    content: body.content,
+    important: body.important,
+  };
+
+  Note.findByIdAndUpdate(req.params.id, note, { new: true })
+    .then((result) => {
+      res.json(result);
+    })
+    .catch((error) => next(error));
 });
 
 // Middleware para saber cuando un endpoint no existe
@@ -78,6 +97,19 @@ const unknownEndpoint = (req, res) => {
 };
 
 app.use(unknownEndpoint);
+
+// Middleware para el manejo de errores
+const errorHandler = (err, req, res, next) => {
+  console.log(err.message);
+
+  if (err.name === "CastError") {
+    return res.status(400).send({ error: "malformed id" });
+  }
+
+  next(err);
+};
+
+app.use(errorHandler);
 
 const PORT = process.env.PORT;
 app.listen(PORT, () => {
