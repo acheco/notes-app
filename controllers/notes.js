@@ -4,14 +4,14 @@ const logger = require("../utils/logger");
 
 //  GET all notes
 notesRouter.get("/", (req, res) => {
-  Note.find({}).then((result) => {
+  Note.find({}, null, null).then((result) => {
     res.json(result);
   });
 });
 
 // GET a single note
 notesRouter.get("/:id", (req, res, next) => {
-  Note.findById(req.params.id)
+  Note.findById(req.params.id, null, null)
     .then((result) => {
       if (result) {
         res.json(result);

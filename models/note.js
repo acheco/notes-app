@@ -1,8 +1,6 @@
 const mongoose = require("mongoose");
 const config = require("../utils/config");
 
-console.log("Connecting to MongoDB...");
-
 const noteSchema = new mongoose.Schema({
   content: {
     type: String,
